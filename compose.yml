@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  qdrant:
+    image: qdrant/qdrant
+    container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__CLUSTER__ENABLED=false
+      - QDRANT__SERVICE__API_KEY=secretapikey
+    networks:
+      - backend
+
+  ollama:
+    image: docker.io/ollama/ollama:latest
+    ports:
+      - "7869:11434"
+    volumes:
+      - .:/code
+      - ./ollama/ollama:/root/.ollama
+    container_name: ollama
+    pull_policy: always
+    tty: true
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - backend
+
+  booker_postgres:
+    image: 'postgres:16'
+    environment:
+      - 'POSTGRES_DB=bookerdb'
+      - 'POSTGRES_PASSWORD=bookerpassword'
+      - 'POSTGRES_USER=bookeruser'
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgresql:/var/lib/postgresql/
+    networks:
+      - backend
+
+  app:
+    build: .
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://liljvrn.ru:8081/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    networks:
+      - backend
+
+volumes:
+  qdrant_data: { }
+  postgresql: { }
+
+networks:
+  backend:
+    driver: bridge
