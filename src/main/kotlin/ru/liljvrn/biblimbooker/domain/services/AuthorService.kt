@@ -40,6 +40,7 @@ class AuthorService(
     fun addAuthor(request: AddAuthor): Author {
         val imageUrl = imageClient.uploadImage(request.authorPhoto, request.authorName, ImageType.AUTHOR)
         val author = authorComponent.saveAuthor(request, imageUrl).toDto()
+        exportAuthor(author)
         return author
     }
 

@@ -10,11 +10,14 @@ import ru.liljvrn.biblimbooker.domain.components.transactional.BookUnitTransacti
 import ru.liljvrn.biblimbooker.domain.models.dto.AddBook
 import ru.liljvrn.biblimbooker.domain.models.dto.Book
 import ru.liljvrn.biblimbooker.domain.models.dto.BookDetailed
+import ru.liljvrn.biblimbooker.domain.models.dto.BookEmbeddingModel
+import ru.liljvrn.biblimbooker.domain.models.dto.EmbeddingDataModel
 import ru.liljvrn.biblimbooker.domain.models.dto.page.BookPage
 import ru.liljvrn.biblimbooker.domain.models.dto.page.EmbeddingPage
 import ru.liljvrn.biblimbooker.domain.models.types.EmbeddingType
 import ru.liljvrn.biblimbooker.domain.models.types.FilterType
 import ru.liljvrn.biblimbooker.domain.models.types.ImageType
+import ru.liljvrn.biblimbooker.support.PAGE_SIZE
 import ru.liljvrn.biblimbooker.support.mappers.toBookPage
 import ru.liljvrn.biblimbooker.support.mappers.toEmbeddingModel
 import ru.liljvrn.biblimbooker.support.pageRequest
@@ -76,13 +79,25 @@ class BookService(
             embeddingClient.searchPage(EmbeddingType.BOOK, query, offset)
         } else {
             val filterGenres = genreService.getGenres().filter { it.genreId in genres }.map { it.genreName }
-            println(filterGenres)
-            embeddingClient.searchPageFiltered(
-                EmbeddingType.BOOK,
-                query,
-                offset,
-                FilterType.GENRE,
-                *filterGenres.toTypedArray()
+            val books = mutableListOf<BookEmbeddingModel>()
+            var total = 0L
+            pageRequest(0) {
+                var page: PageRequest = it
+                do {
+                    val bookPage = embeddingClient.searchPage(EmbeddingType.BOOK, query, page.offset)
+                    for (embeddingModel in bookPage.models) {
+                        val book = embeddingModel as BookEmbeddingModel
+                        if (filterGenres.any { genre -> book.genres.contains(genre) }) {
+                            books.add(book)
+                            total++
+                        }
+                    }
+                    page = page.next()
+                } while (bookPage.models.isNotEmpty())
+            }
+            EmbeddingPage(
+                total = total,
+                models = books.take(PAGE_SIZE)
             )
         }
 

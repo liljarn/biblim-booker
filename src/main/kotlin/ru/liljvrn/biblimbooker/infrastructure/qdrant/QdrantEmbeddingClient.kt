@@ -48,55 +48,8 @@ class QdrantEmbeddingClient(
         )
     }
 
-    override fun searchPageFiltered(
-        type: EmbeddingType,
-        query: String,
-        offset: Long,
-        filterType: FilterType,
-        vararg values: String
-    ): EmbeddingPage {
-        val listValues = values.map { it }
-        val filter = buildFilter(filterType, listValues)
-
-        val queryEmbedding = embeddingModel.embed(query)
-        val searchPoints = SearchPoints.newBuilder().setCollectionName(EmbeddingType.BOOK.value).setLimit(PAGE_SIZE.toLong())
-            .setWithPayload(enable(true))
-            .addAllVector(EmbeddingUtils.toList(queryEmbedding)).setFilter(filter)
-            .setOffset(0)
-            .build()
-        val queryResponse = qdrantClient.searchAsync(searchPoints)
-        val count = qdrantClient.countAsync(EmbeddingType.BOOK.value, filter, true).also { println(it.get()) }
-
-        return EmbeddingPage(
-            total = count.get(),
-            models = queryResponse.get().map {
-                toDocument(it).metadata.let { meta -> JsonUtils.convertObject(meta, type.modelType) }
-            }
-        )
-    }
-
     override fun addVector(type: EmbeddingType, model: EmbeddingDataModel) {
         processorsMap[type]!!.addVector(model)
-    }
-
-    private fun buildFilter(filterType: FilterType, values: List<String>): Points.Filter {
-        val filter = Points.Filter.newBuilder()
-
-        values.forEach { value ->
-            val condition = Points.Condition.newBuilder()
-                .setField(
-                    Points.FieldCondition.newBuilder()
-                        .setKey(filterType.value)
-                        .setMatch(Points.Match.newBuilder()
-                            .setText(value)
-                            .build())
-                        .build()
-                )
-                .build()
-            filter.addShould(condition)
-        }
-
-        return filter.build()
     }
 
     private fun toDocument(point: ScoredPoint): Document {

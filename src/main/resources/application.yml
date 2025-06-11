@@ -17,7 +17,7 @@ spring:
       qdrant:
         host: localhost
         port: 6334
-        api-key: text
+        api-key: secretapikey
         collection-name: books
         use-tls: false
         initialize-schema: true
@@ -26,7 +26,7 @@ spring:
         pull-model-strategy: always
         embedding:
           additional-models:
-            - nomic-embed-text
+            - mxbai-embed-large
       base-url: http://localhost:7869
     model:
       embedding: ollama
