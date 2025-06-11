@@ -126,7 +126,10 @@ interface BookRepository : CrudRepository<BookEntity, Long> {
         JOIN authors a ON b.author_id = a.author_id
         JOIN book_genre bg ON bg.book_id = b.book_id
         JOIN genres g ON g.genre_id = bg.genre_id
-        WHERE bg.genre_id IN (:genres)
+        WHERE EXISTS (
+            SELECT 1 FROM book_genre bg2
+            WHERE bg2.book_id = b.book_id AND bg2.genre_id IN (:genres)
+        )
         GROUP BY b.book_id, a.author_id
         ORDER BY b.book_id
         LIMIT :limit OFFSET :offset;
@@ -140,7 +143,10 @@ interface BookRepository : CrudRepository<BookEntity, Long> {
     @Query("""
         SELECT COUNT(DISTINCT b.book_id) FROM books b
         JOIN book_genre bg ON b.book_id = bg.book_id
-        WHERE bg.genre_id IN (:genres)
+        WHERE EXISTS (
+            SELECT 1 FROM book_genre bg2
+            WHERE bg2.book_id = b.book_id AND bg2.genre_id IN (:genres)
+        )
     """)
     fun countFiltered(@Param("genres") genres: List<Int>): Long
 

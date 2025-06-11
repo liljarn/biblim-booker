@@ -41,6 +41,7 @@ cloud:
     credentials:
       access-key: text
       secret-key: text
+    region: ru-central1
     endpoint: text
     bucket-name:
       book: books-images
